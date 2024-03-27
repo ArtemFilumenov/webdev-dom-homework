@@ -41,6 +41,9 @@
     .error {
       background-color: red;
     }
+    .hidden {
+      display: none;
+    }
   </style>
   <script>
     //Прелоудер
@@ -53,7 +56,7 @@
     const listElement = document.getElementById("list");
     const nameInputElement = document.getElementById("name-input");
     const textInputElement = document.getElementById("text-input");
-    const addForm = document.getElementById("addForm");
+    const addForm = document.querySelector(".add-form");
     const loader = document.querySelector(".loader");
 
     //массив пользователей
@@ -89,37 +92,43 @@
 
     renderUsers();
 
-        //Функция получения и преобразования данных с сервера
-        function getComments() {
-    const fetchPromise = fetch(
-      'https://wedev-api.sky.pro/api/v1/artem-filumenov/comments',
-      {
-        method: "GET",
-      });
+    //Функция получения и преобразования данных с сервера
+    function getComments() {
+      return fetch(
+        'https://wedev-api.sky.pro/api/v1/artem-filumenov/comments',
+        {
+          method: "GET",
+          forceError: true,
+        }).then((response) => {
+          if (response.status === 500) {
+          throw new Error("Сервер упал");
+          };
+          return response.json();
+        }).then((responseData) => {
+            const appUsers = responseData.comments.map((comment) => {
+              return {
+                name: comment.author.name,
+                date: new Date(comment.date),
+                comment: comment.text,
+                likes: comment.likes,
+                isLiked: false,
+                id: comment.id,
+              }
+            });
+            users = appUsers;
+            renderUsers();
+            loader.textContent = '';
+            addForm.classList.remove("hidden");//отобразить форму ввода
+            preloader.classList.add('preloader-hidden');
+        }).catch((error) => {
+          if (error.message === 'Failed to fetch') {
+            alert("Кажется что-то пошло не так, попробуйте позже");
+          };
+          if (error.message === "Сервер упал") {
+            alert('Сервер сломался, попробуйте позже');
+          };
 
-      fetchPromise.then((response) => {
-
-        const jsonPromise = response.json();
-
-        jsonPromise.then((responseData) => {
-
-          const appUsers = responseData.comments.map((comment) => {
-            return {
-              name: comment.author.name,
-              date: new Date(comment.date),
-              comment: comment.text,
-              likes: comment.likes,
-              isLiked: false,
-              id: comment.id,
-            }
-          });
-
-          users = appUsers;
-          renderUsers();
-          loader.textContent = '';
-          addForm.classList.remove("hidden");//отобразить форму ввода
-          preloader.classList.add('preloader-hidden');
-        });
+        console.warn(error);
       });
     };
 
@@ -169,30 +178,49 @@
       addForm.classList.add("hidden");
       loader.textContent = 'Комментарий добавляется...';
 
-      //Вввод нового комментария
+      //Ввод нового комментария
       const lastIndex = users.length - 1;
       const lastUserId = users[lastIndex]['id']
 
       const fetchPromise = fetch(
       'https://wedev-api.sky.pro/api/v1/artem-filumenov/comments',
+
       {
         method: "POST",
         body: JSON.stringify({
           text: textInputElement.value.replaceAll('<', '&lt;').replaceAll('>', '&gt;'),
           name: nameInputElement.value.replaceAll('<', '&lt;').replaceAll('>', '&gt;'),
+          forceError: true,
         }),
       }).then((response) => {
-        const jsonPromise = response.json();
-       
-        getComments();
+        if (response.status === 500) {
+          throw new Error("Сервер упал");
+        };
+        if (response.status === 400) {
+          throw new Error("Короткие вводимые данные");
+        };
+        return response.json();
+      }).then((response) => {
+          getComments();
+          //Очистка форм input
+          nameInputElement.value = "";
+          textInputElement.value = "";
 
-        //Очистка форм input
-        nameInputElement.value = "";
-        textInputElement.value = "";
-
-        renderUsers();
+          renderUsers();
       }).catch((error) => {
-        alert("Кажется что-то пошло не так, попробуйте позже");
+        if (error.message === 'Failed to fetch') {
+          alert("Кажется что-то пошло не так, попробуйте позже");
+        };
+        if (error.message === "Сервер упал") {
+          alert('Сервер сломался, попробуйте позже');
+        };
+        if (error.message === "Короткие вводимые данные") {
+          alert('Имя и комментарий должны быть не короче 3х символов');
+        };
+
+        console.warn(error);
+        loader.textContent = '';
+        addForm.classList.remove("hidden");
       });
     });
 
