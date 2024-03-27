@@ -1,17 +1,21 @@
 <!DOCTYPE html>
-<html>
+<html lang="ru">
   <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Проект "Комменты"</title>
-    <meta charset="utf-8" />
     <link rel="stylesheet" href="styles.css" />
   </head>
 
   <body>
+    <div id='preloader'>
+      <p class="preloader-text">Пожалуйста подождите, загружаю комментарии...</p>
+    </div>
     <div class="container">
       <ul class="comments" id = 'list'>
         <!-- Список комментариев пользователей -->
       </ul>
-      <div class="add-form">
+      <div class="add-form" id="addForm">
         <input
           type="text" 
           class="add-form-name"
@@ -30,6 +34,7 @@
           <button class="add-form-button" id="addCommentButton">Написать</button>
         </div>
       </div>
+      <div class="loader"></div> <!-- Лоадер -->
     </div>
   </body>
   <style>
@@ -38,32 +43,21 @@
     }
   </style>
   <script>
+    //Прелоудер
+    window.onload = function() {
+    let preloader = document.getElementById('preloader');
+}
+
     //Обработчики событий
     const buttonElement = document.getElementById("addCommentButton");
     const listElement = document.getElementById("list");
     const nameInputElement = document.getElementById("name-input");
     const textInputElement = document.getElementById("text-input");
+    const addForm = document.getElementById("addForm");
+    const loader = document.querySelector(".loader");
 
     //массив пользователей
-    const users = [
-      {
-        name: 'Глеб Фокин',
-        date: '12.02.22 12:18',
-        comment: 'Это будет первый комментарий на этой странице',
-        likes: 3,
-        isLiked: false,
-        id: 1,
-
-      },
-      {
-        name: 'Варвара Н.',
-        date: '13.02.22 19:22',
-        comment: 'Мне нравится как оформлена эта страница! ❤',
-        likes: 75,
-        isLiked: true,
-        id: 2,
-      },
-    ];
+    let users = [];
 
     //HTML разметка комментария
     const renderUsers = () => {
@@ -71,7 +65,7 @@
         return `<li class="comment">
                   <div class="comment-header">
                     <div class="user-name">${item.name}</div>
-                    <div>${item.date}</div>
+                    <div>${clock(item.date)}</div>
                   </div>
                   <div data-text="${item.comment}" class="comment-body">
                     <div class="comment-text">
@@ -94,6 +88,42 @@
     };
 
     renderUsers();
+
+        //Функция получения и преобразования данных с сервера
+        function getComments() {
+    const fetchPromise = fetch(
+      'https://wedev-api.sky.pro/api/v1/artem-filumenov/comments',
+      {
+        method: "GET",
+      });
+
+      fetchPromise.then((response) => {
+
+        const jsonPromise = response.json();
+
+        jsonPromise.then((responseData) => {
+
+          const appUsers = responseData.comments.map((comment) => {
+            return {
+              name: comment.author.name,
+              date: new Date(comment.date),
+              comment: comment.text,
+              likes: comment.likes,
+              isLiked: false,
+              id: comment.id,
+            }
+          });
+
+          users = appUsers;
+          renderUsers();
+          loader.textContent = '';
+          addForm.classList.remove("hidden");//отобразить форму ввода
+          preloader.classList.add('preloader-hidden');
+        });
+      });
+    };
+
+    getComments();
 
     //функция лайков
     function initLikeButtonListeners () {
@@ -119,13 +149,11 @@
 
         });
       }
-    }
+    };
 
-    
-      
     //функция формата реального времени
-    function clock() {
-      let fullDate = new Date().toLocaleDateString([], { day: "2-digit", month: "2-digit", year: "2-digit" }) + " " + new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    function clock(time) {
+      let fullDate = time.toLocaleDateString([], { day: "2-digit", month: "2-digit", year: "2-digit",}) + " " + time.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
       return fullDate;
     }
 
@@ -137,25 +165,35 @@
         textInputElement.classList.add("error") || nameInputElement.classList.add("error");
         return;        
       }
+      //Скрыть форму ввода во время загрузки
+      addForm.classList.add("hidden");
+      loader.textContent = 'Комментарий добавляется...';
 
       //Вввод нового комментария
       const lastIndex = users.length - 1;
       const lastUserId = users[lastIndex]['id']
-      console.log(lastUserId);
-      users.push({
-        name: nameInputElement.value.replaceAll('<', '&lt;').replaceAll('>', '&gt;'),
-        date: clock(),
-        comment: textInputElement.value.replaceAll('<', '&lt;').replaceAll('>', '&gt;'),
-        likes: 0,
-        isLiked: false,
-        id: lastUserId + 1,
-      })
 
-      renderUsers();
+      const fetchPromise = fetch(
+      'https://wedev-api.sky.pro/api/v1/artem-filumenov/comments',
+      {
+        method: "POST",
+        body: JSON.stringify({
+          text: textInputElement.value.replaceAll('<', '&lt;').replaceAll('>', '&gt;'),
+          name: nameInputElement.value.replaceAll('<', '&lt;').replaceAll('>', '&gt;'),
+        }),
+      }).then((response) => {
+        const jsonPromise = response.json();
+       
+        getComments();
 
-      //Очистка форм input
-      nameInputElement.value = "";
-      textInputElement.value = "";
+        //Очистка форм input
+        nameInputElement.value = "";
+        textInputElement.value = "";
+
+        renderUsers();
+      }).catch((error) => {
+        alert("Кажется что-то пошло не так, попробуйте позже");
+      });
     });
 
     //Функция ответа на комментарий
@@ -167,10 +205,10 @@
           console.log(event);
           textInputElement.value = `< ${event.target.outerText} \n ${event.target.parentElement.parentElement.firstElementChild.firstElementChild.innerText},`;
         });
-      
       }
     }
-    answerComment ()
+    answerComment();
+
     // Код писать здесь
     console.log("It works!");
   </script>
