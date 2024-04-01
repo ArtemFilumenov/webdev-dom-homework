@@ -3,7 +3,7 @@ import { comments, user } from "./main.js";
 import { format } from "date-fns";
 
 export const renderComments = () => {
-    // const country = "ru";
+    // const country = "ru";л
     const listElement = document.getElementById("list");
     const commentsHtml = comments.map((item) => {
       let createDate = format(new Date(item.date), 'yyyy-MM-dd hh.mm');
