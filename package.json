@@ -13,4 +13,4 @@
       "start": "htpp-server -p 3004",
       "dev": "webpack --mode development --watch"
   }
-}
+} 
