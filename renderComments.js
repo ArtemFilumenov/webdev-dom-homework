@@ -61,7 +61,6 @@ function answerComment() {
     const commentBlocks = document.querySelectorAll('.comment-body')
     for (const commentBlock of commentBlocks) {
         commentBlock.addEventListener('click', (event) => {
-            const userNames = document.querySelectorAll('.user-name')
             const textInputElement = document.getElementById('text-input')
             textInputElement.value = `< ${event.target.outerText} \n ${event.target.parentElement.parentElement.firstElementChild.firstElementChild.innerText},`
         })

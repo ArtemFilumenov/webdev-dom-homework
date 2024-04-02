@@ -31,7 +31,7 @@ export function getTodos() {
             };
         console.warn(error);
       });
-};б
+};
 
 export function postTodo({text, name}) {
     return fetch(host,
